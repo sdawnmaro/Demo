@@ -21,21 +21,29 @@ public class MessageVerticle extends AbstractVerticle {
         JsonObject request = message.body();
         String action = request.getString("action");
 
-        if("changeWord".equals(action)) {
-            String input = request.getString("input");
-            JFormat(input);
-        } else if ("setState".equals(action)) {
-            int newState = request.getInteger("newState");
-            SetState(newState);
-        } else if ("getState".equals(action)) {
-            GetState();
-        } else {
-            message.fail(400, "錯誤操作");
+        switch (action) {
+            case "wordChangeHandler":
+                String input = request.getString("input");
+                wordChangeHandler(input);
+                message.reply("成功呼叫 wordChange API");
+                break;
+            case "SetStateHandler":
+                int newState = request.getInteger("newState");
+                SetStateHandler(newState);
+                message.reply("成功呼叫 setState API");
+                break;
+            case "GetStateHandler":
+                GetStateHandler();
+                message.reply("成功呼叫 getState API");
+                break;
+            default:
+                message.fail(400, "錯誤操作");
+                break;
         }
     }
 
     //返回一個JSON物件
-    private Future<JsonObject> JFormat(String input) {
+    private Future<JsonObject> wordChangeHandler(String input) {
         try {
             //計算字數
             int length = input.length();
@@ -45,6 +53,7 @@ public class MessageVerticle extends AbstractVerticle {
             JsonObject jString = new JsonObject()
                     .put("length", length)
                     .put("upper", upper);
+            System.out.println("成功獲取字串資訊");
 
             //操作成功，返回jString
             return Future.succeededFuture(jString);
@@ -55,9 +64,10 @@ public class MessageVerticle extends AbstractVerticle {
     }
 
     //更新狀態
-    private Future<Void> SetState(int newState) {
+    private Future<Void> SetStateHandler(int newState) {
         if (newState <= 3 && newState >= 0) {
             serverState = newState;
+            System.out.println("成功更新Server狀態");
             return Future.succeededFuture();
         } else {
             return Future.failedFuture("狀態值無效，狀態值範圍為0~3");
@@ -65,7 +75,8 @@ public class MessageVerticle extends AbstractVerticle {
     }
 
     //查詢狀態
-    private Future<Integer> GetState() {
+    private Future<Integer> GetStateHandler() {
+        System.out.println("成功獲取Server狀態");
         return Future.succeededFuture(serverState);
     }
 }
