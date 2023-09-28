@@ -33,7 +33,8 @@ public class WebVerticle extends AbstractVerticle {
     }
 
     private void wordChangeHandler(RoutingContext context) {
-        String input = context.getBodyAsString();
+        //從 URL 參數中獲取資料:/api/v1/word-state?input=輸入值
+        String input = context.request().getParam("input");
         JsonObject request = new JsonObject()
                 .put("action", "wordChangeHandler")
                 .put("input", input);
@@ -42,9 +43,10 @@ public class WebVerticle extends AbstractVerticle {
     }
 
     private void setStateHandler(RoutingContext context){
+        //從 Request Body 獲取資料
         int newState = Integer.parseInt(context.getBodyAsString());
         JsonObject request = new JsonObject()
-                .put("action", "SetStateHandler")
+                .put("action", "setStateHandler")
                 .put("newState", newState);
 
         forwardRequest(request, context);
@@ -52,7 +54,7 @@ public class WebVerticle extends AbstractVerticle {
 
     private void getStateHandler(RoutingContext context){
         JsonObject request = new JsonObject()
-                .put("action", "GetStateHandler");
+                .put("action", "getStateHandler");
 
         forwardRequest(request, context);
     }

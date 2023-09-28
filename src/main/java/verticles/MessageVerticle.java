@@ -18,23 +18,41 @@ public class MessageVerticle extends AbstractVerticle {
     }
 
     private void handleApiRequest(Message<JsonObject> message) {
+        //檢測有透過eventBus串接成功
+        System.out.println("處理 HTTP 需求");
+
         JsonObject request = message.body();
         String action = request.getString("action");
 
         switch (action) {
             case "wordChangeHandler":
                 String input = request.getString("input");
-                wordChangeHandler(input);
-                message.reply("成功呼叫 wordChange API");
+                wordChangeHandler(input).onComplete(rs -> {
+                    if (rs.succeeded()) {
+                        message.reply(rs.result());
+                    } else {
+                        message.fail(400, "API 執行失敗：" + rs.cause().getLocalizedMessage());
+                    }
+                });
                 break;
-            case "SetStateHandler":
+            case "setStateHandler":
                 int newState = request.getInteger("newState");
-                SetStateHandler(newState);
-                message.reply("成功呼叫 setState API");
+                setStateHandler(newState).onComplete(rs -> {
+                   if (rs.succeeded()) {
+                       message.reply(rs.result());
+                   } else {
+                       message.fail(400, "API 執行失敗：" + rs.cause().getLocalizedMessage());
+                   }
+                });
                 break;
-            case "GetStateHandler":
-                GetStateHandler();
-                message.reply("成功呼叫 getState API");
+            case "getStateHandler":
+                getStateHandler().onComplete(rs -> {
+                    if (rs.succeeded()) {
+                        message.reply(rs.result());
+                    } else {
+                        message.fail(400, "API 執行失敗：" + rs.cause().getLocalizedMessage());
+                    }
+                });
                 break;
             default:
                 message.fail(400, "錯誤操作");
@@ -45,38 +63,53 @@ public class MessageVerticle extends AbstractVerticle {
     //返回一個JSON物件
     private Future<JsonObject> wordChangeHandler(String input) {
         try {
-            //計算字數
-            int length = input.length();
-            //將字串轉為大寫
-            String upper = input.toUpperCase();
-            //json格式
-            JsonObject jString = new JsonObject()
-                    .put("length", length)
-                    .put("upper", upper);
-            System.out.println("成功獲取字串資訊");
+            if (input != null) {
+                //計算字數
+                int length = input.length();
+                //將字串轉為大寫
+                String upper = input.toUpperCase();
+                //json格式
+                JsonObject responseWord = new JsonObject()
+                        .put("length", length)
+                        .put("upper", upper);
 
-            //操作成功，返回jString
-            return Future.succeededFuture(jString);
+                System.out.println("成功計算字串，並轉為大寫");
+
+                //操作成功，返回jString
+                return Future.succeededFuture(responseWord);
+            } else {
+                return Future.failedFuture("輸入字串為空，無法對字串進行計算與轉換");
+            }
         } catch (DecodeException e) {
             //操作失敗，返回異常原因
-            return Future.failedFuture(e.getMessage());
+            return Future.failedFuture(e.getLocalizedMessage());
         }
     }
 
     //更新狀態
-    private Future<Void> SetStateHandler(int newState) {
-        if (newState <= 3 && newState >= 0) {
-            serverState = newState;
-            System.out.println("成功更新Server狀態");
-            return Future.succeededFuture();
-        } else {
-            return Future.failedFuture("狀態值無效，狀態值範圍為0~3");
+    private Future<JsonObject> setStateHandler(int newState) {
+        try {
+            if (newState <= 3 && newState >= 0) {
+                //設定新狀態
+                serverState = newState;
+                JsonObject responseState = new JsonObject()
+                        .put("state", newState);
+
+                System.out.println("成功更新Server狀態");
+                return Future.succeededFuture(responseState);
+            } else {
+                return Future.failedFuture("狀態值無效，狀態值範圍為0~3");
+            }
+        } catch (DecodeException e) {
+            return Future.failedFuture(e.getLocalizedMessage());
         }
     }
 
     //查詢狀態
-    private Future<Integer> GetStateHandler() {
+    private Future<JsonObject> getStateHandler() {
         System.out.println("成功獲取Server狀態");
-        return Future.succeededFuture(serverState);
+        JsonObject responseState = new JsonObject()
+                .put("state", serverState);
+        return Future.succeededFuture(responseState);
     }
 }
