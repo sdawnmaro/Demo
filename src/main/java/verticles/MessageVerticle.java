@@ -1,5 +1,6 @@
 package verticles;
 
+import constant.ConstantValue;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.eventbus.EventBus;
@@ -25,9 +26,9 @@ public class MessageVerticle extends AbstractVerticle {
         String action = request.getString("action");
 
         switch (action) {
-            case "wordChangeHandler":
+            case ConstantValue.GWS:
                 String input = request.getString("input");
-                wordChangeHandler(input).onComplete(rs -> {
+                getWordState(input).onComplete(rs -> {
                     if (rs.succeeded()) {
                         message.reply(rs.result());
                     } else {
@@ -35,9 +36,9 @@ public class MessageVerticle extends AbstractVerticle {
                     }
                 });
                 break;
-            case "setStateHandler":
+            case ConstantValue.USS:
                 int newState = request.getInteger("newState");
-                setStateHandler(newState).onComplete(rs -> {
+                updateServerState(newState).onComplete(rs -> {
                    if (rs.succeeded()) {
                        message.reply(rs.result());
                    } else {
@@ -45,8 +46,8 @@ public class MessageVerticle extends AbstractVerticle {
                    }
                 });
                 break;
-            case "getStateHandler":
-                getStateHandler().onComplete(rs -> {
+            case ConstantValue.GSS:
+                getServerState().onComplete(rs -> {
                     if (rs.succeeded()) {
                         message.reply(rs.result());
                     } else {
@@ -61,7 +62,7 @@ public class MessageVerticle extends AbstractVerticle {
     }
 
     //返回一個JSON物件
-    private Future<JsonObject> wordChangeHandler(String input) {
+    private Future<JsonObject> getWordState(String input) {
         try {
             if (input != null) {
                 //計算字數
@@ -75,7 +76,7 @@ public class MessageVerticle extends AbstractVerticle {
 
                 System.out.println("成功計算字串，並轉為大寫");
 
-                //操作成功，返回jString
+                //操作成功，返回 responseWord (json格式)
                 return Future.succeededFuture(responseWord);
             } else {
                 return Future.failedFuture("輸入字串為空，無法對字串進行計算與轉換");
@@ -87,7 +88,7 @@ public class MessageVerticle extends AbstractVerticle {
     }
 
     //更新狀態
-    private Future<JsonObject> setStateHandler(int newState) {
+    private Future<JsonObject> updateServerState(int newState) {
         try {
             if (newState <= 3 && newState >= 0) {
                 //設定新狀態
@@ -106,7 +107,7 @@ public class MessageVerticle extends AbstractVerticle {
     }
 
     //查詢狀態
-    private Future<JsonObject> getStateHandler() {
+    private Future<JsonObject> getServerState() {
         System.out.println("成功獲取Server狀態");
         JsonObject responseState = new JsonObject()
                 .put("state", serverState);

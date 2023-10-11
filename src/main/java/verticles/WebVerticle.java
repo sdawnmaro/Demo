@@ -1,5 +1,6 @@
 package verticles;
 
+import constant.ConstantValue;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.eventbus.EventBus;
@@ -15,9 +16,9 @@ public class WebVerticle extends AbstractVerticle {
 
         //設定路由和處理程序(handler)
         router.route().handler(BodyHandler.create());
-        router.get("/api/v1/word-state").handler(this::wordChangeHandler);
-        router.put("/api/v1/server-state").handler(this::setStateHandler);
-        router.get("/api/v1/server-state").handler(this::getStateHandler);
+        router.get("/api/v1/word-state").handler(this::getWordState);
+        router.put("/api/v1/server-state").handler(this::updateServerState);
+        router.get("/api/v1/server-state").handler(this::getServerState);
 
         //啟動 HTTP 伺服器
         vertx.createHttpServer()
@@ -32,29 +33,51 @@ public class WebVerticle extends AbstractVerticle {
                 });
     }
 
-    private void wordChangeHandler(RoutingContext context) {
-        //從 URL 參數中獲取資料:/api/v1/word-state?input=輸入值
-        String input = context.request().getParam("input");
-        JsonObject request = new JsonObject()
-                .put("action", "wordChangeHandler")
-                .put("input", input);
+    private void getWordState(RoutingContext context) {
+        try {
+            //從 URL 參數中獲取資料:/api/v1/word-state?input=輸入值
+            String input = context.request().getParam("input");
 
-        forwardRequest(request, context);
+            //若 input 為空，拋出例外
+            if (input == null) {
+                throw new IllegalArgumentException();
+            }
+
+            JsonObject request = new JsonObject()
+                    .put("action", ConstantValue.GWS)
+                    .put("input", input);
+
+            forwardRequest(request, context);
+        } catch (IllegalArgumentException e) {
+            System.out.println("參數值為空：" + e.getLocalizedMessage());
+        }
     }
 
-    private void setStateHandler(RoutingContext context){
-        //從 Request Body 獲取資料
-        int newState = Integer.parseInt(context.getBodyAsString());
-        JsonObject request = new JsonObject()
-                .put("action", "setStateHandler")
-                .put("newState", newState);
+    private void updateServerState(RoutingContext context){
+        try {
+            //從 Request Body 獲取資料
+            JsonObject stateValue = context.getBodyAsJson();
 
-        forwardRequest(request, context);
+            //若 stateValue 為空，拋出例外
+            if (!stateValue.containsKey("newState")) {
+                throw new IllegalArgumentException();
+            }
+
+            int newState = stateValue.getInteger("newState");
+
+            JsonObject request = new JsonObject()
+                    .put("action", ConstantValue.USS)
+                    .put("newState", newState);
+
+            forwardRequest(request, context);
+        } catch (IllegalArgumentException e) {
+            System.out.println("參數值為空：" + e.getLocalizedMessage());
+        }
     }
 
-    private void getStateHandler(RoutingContext context){
+    private void getServerState(RoutingContext context){
         JsonObject request = new JsonObject()
-                .put("action", "getStateHandler");
+                .put("action", ConstantValue.GSS);
 
         forwardRequest(request, context);
     }
