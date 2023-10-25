@@ -4,7 +4,9 @@ import constant.ConstantValue;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.net.PemKeyCertOptions;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
@@ -20,10 +22,17 @@ public class WebVerticle extends AbstractVerticle {
         router.put("/api/v1/server-state").handler(this::updateServerState);
         router.get("/api/v1/server-state").handler(this::getServerState);
 
+        //設定 HTTP 伺服器選項(SSL配置)
+        HttpServerOptions httpServerOptions = new HttpServerOptions()
+                .setSsl(true)
+                .setPemKeyCertOptions(new PemKeyCertOptions()
+                        .setCertPath("/Users/mashimaro511311/IdeaProjects/PracticeDemo/KAC/selfsigned.crt")
+                        .setKeyPath("/Users/mashimaro511311/IdeaProjects/PracticeDemo/KAC/privatekey.pem"));
+
         //啟動 HTTP 伺服器
-        vertx.createHttpServer()
+        vertx.createHttpServer(httpServerOptions)
                 .requestHandler(router)
-                .listen(8080, serverStart -> {
+                .listen(8443, serverStart -> {
                     if (serverStart.succeeded()){
                         startPromise.complete();
                         System.out.println("HTTP server start");
@@ -35,7 +44,7 @@ public class WebVerticle extends AbstractVerticle {
 
     private void getWordState(RoutingContext context) {
         try {
-            //從 URL 參數中獲取資料:/api/v1/word-state?input=輸入值
+            //從 URL 參數中獲取資料:https://localhost:8443/api/v1/word-state?input=輸入值
             String input = context.request().getParam("input");
 
             //若 input 為空，拋出例外
