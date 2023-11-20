@@ -4,6 +4,7 @@ import constant.ConstantValue;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.ReplyException;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.PemKeyCertOptions;
@@ -13,23 +14,25 @@ import io.vertx.ext.web.handler.BodyHandler;
 
 public class WebVerticle extends AbstractVerticle {
     public void start(Promise<Void> startPromise){
-        //建立 Router 來處理 HTTP 的請求
+        // 建立 Router 來處理 HTTP 的請求
         Router router = Router.router(vertx);
 
-        //設定路由和處理程序(handler)
+        // 設定路由和處理程序(handler)
         router.route().handler(BodyHandler.create());
-        router.get("/api/v1/word-state").handler(this::getWordState);
-        router.put("/api/v1/server-state").handler(this::updateServerState);
-        router.get("/api/v1/server-state").handler(this::getServerState);
+        router.get("/api/v1/news/info").handler(this::getNewList);
+        router.get("/api/v1/news/:name/article-num").handler(this::articleNum);
+        router.get("/api/v1/news/:name/word-num").handler(this::wordNum);
+        router.get("/api/v1/news/:name/article-list").handler(this::articleList);
+        router.get("/api/v1/news/:name/title-list").handler(this::titleList);
 
-        //設定 HTTP 伺服器選項(SSL配置)
+        // 設定 HTTP 伺服器選項(SSL配置)
         HttpServerOptions httpServerOptions = new HttpServerOptions()
                 .setSsl(true)
                 .setPemKeyCertOptions(new PemKeyCertOptions()
                         .setCertPath("/Users/mashimaro511311/IdeaProjects/PracticeDemo/KAC/selfsigned.crt")
                         .setKeyPath("/Users/mashimaro511311/IdeaProjects/PracticeDemo/KAC/privatekey.pem"));
 
-        //啟動 HTTP 伺服器
+        // 啟動 HTTP 伺服器
         vertx.createHttpServer(httpServerOptions)
                 .requestHandler(router)
                 .listen(8443, serverStart -> {
@@ -42,72 +45,120 @@ public class WebVerticle extends AbstractVerticle {
                 });
     }
 
-    private void getWordState(RoutingContext context) {
-        try {
-            //從 URL 參數中獲取資料:https://localhost:8443/api/v1/word-state?input=輸入值
-            String input = context.request().getParam("input");
+    //新聞站台清單
+    private void getNewList(RoutingContext context) {
+            JsonObject request = new JsonObject()
+                    .put("action", ConstantValue.GNL);
 
-            //若 input 為空，拋出例外
-            if (input == null) {
+            forwardRequest(request, context);
+    }
+
+    //文章總數
+    private void articleNum(RoutingContext context) {
+        try {
+            // 獲取 :name 參數值
+            String stationName = context.pathParam("name");
+
+            JsonObject request = new JsonObject()
+                    .put("action", ConstantValue.AN)
+                    .put("name", stationName);
+
+            forwardRequest(request, context);
+        } catch (IllegalArgumentException e) {
+            System.out.println("參數值錯誤：" + e.getLocalizedMessage());
+        } catch (Exception e) {
+            System.out.println(e.getLocalizedMessage());
+        }
+    }
+
+    //所有文章字數總數
+    private void wordNum(RoutingContext context) {
+        try {
+            // 獲取 :name 參數值
+            String stationName = context.pathParam("name");
+
+            JsonObject request = new JsonObject()
+                    .put("action", ConstantValue.WN)
+                    .put("name", stationName);
+
+            forwardRequest(request, context);
+        } catch (IllegalArgumentException e) {
+            System.out.println("參數值錯誤：" + e.getLocalizedMessage());
+        } catch (Exception e) {
+            System.out.println(e.getLocalizedMessage());
+        }
+    }
+
+    //文章清單
+    private void articleList(RoutingContext context) {
+        try {
+            // 獲取 :name 參數值
+            String stationName = context.pathParam("name");
+
+            JsonObject request = new JsonObject()
+                    .put("action", ConstantValue.AL)
+                    .put("name", stationName);
+
+            forwardRequest(request, context);
+        } catch (IllegalArgumentException e) {
+            System.out.println("參數值錯誤：" + e.getLocalizedMessage());
+        } catch (Exception e) {
+            System.out.println(e.getLocalizedMessage());
+        }
+    }
+
+    //標題清單
+    private void titleList(RoutingContext context) {
+        try {
+            // 獲取 :name 參數值
+            String stationName = context.pathParam("name");
+            // 取得輸入值，從 URL 參數中獲取:https://localhost:8443/api/v1/news/:name/title-list?keyword=輸入值
+            String keyword = context.request().getParam("keyword");
+
+            if (keyword == null) {
                 throw new IllegalArgumentException();
             }
 
             JsonObject request = new JsonObject()
-                    .put("action", ConstantValue.GWS)
-                    .put("input", input);
+                    .put("action", ConstantValue.TL)
+                    .put("name", stationName)
+                    .put("keyword", keyword);
 
             forwardRequest(request, context);
         } catch (IllegalArgumentException e) {
             System.out.println("參數值為空：" + e.getLocalizedMessage());
+        } catch (Exception e) {
+            System.out.println(e.getLocalizedMessage());
         }
     }
 
-    private void updateServerState(RoutingContext context){
-        try {
-            //從 Request Body 獲取資料
-            JsonObject stateValue = context.getBodyAsJson();
-
-            //若 stateValue 為空，拋出例外
-            if (!stateValue.containsKey("newState")) {
-                throw new IllegalArgumentException();
-            }
-
-            int newState = stateValue.getInteger("newState");
-
-            JsonObject request = new JsonObject()
-                    .put("action", ConstantValue.USS)
-                    .put("newState", newState);
-
-            forwardRequest(request, context);
-        } catch (IllegalArgumentException e) {
-            System.out.println("參數值為空：" + e.getLocalizedMessage());
-        }
-    }
-
-    private void getServerState(RoutingContext context){
-        JsonObject request = new JsonObject()
-                .put("action", ConstantValue.GSS);
-
-        forwardRequest(request, context);
-    }
-
-    //處理傳入的 HTTP 請求，並透過 EventBus 將請求轉發給 MessageVerticle
+    // 處理傳入的 HTTP 請求，並透過 EventBus 將請求轉發給 MessageVerticle
     private void forwardRequest(JsonObject apiRequest, RoutingContext context) {
         EventBus eventBus = vertx.eventBus();
 
-        eventBus.request("apiRequest", apiRequest, reply -> {
+        eventBus.request("apiCon", apiRequest, reply -> {
                 if (reply.succeeded()){
                     context.response()
                             .setStatusCode(200)
                             .end(reply.result().body().toString());
 
-                    System.out.println("Web verticle start");
+                    System.out.println("請求成功");
                 } else {
-                    context.response()
-                            .setStatusCode(500)
-                            .end("伺服器連接錯誤");
+                    Throwable cause = reply.cause();
+                    if (cause instanceof ReplyException){
+                        ReplyException replyException = (ReplyException) cause;
+                        int errorCode = replyException.failureCode();
 
-                    System.out.println(reply.cause().getLocalizedMessage());
+                        context.response()
+                                .setStatusCode(errorCode)
+                                .end(reply.cause().getLocalizedMessage());
+                    } else {
+                        context.response()
+                                .setStatusCode(500)
+                                .end(reply.cause().getLocalizedMessage());
+                    }
+
+                    System.out.println("請求失敗：" + cause.getLocalizedMessage());
                 }
         });
     }
