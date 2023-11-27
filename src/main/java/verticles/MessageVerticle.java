@@ -1,7 +1,9 @@
 package verticles;
 
 import constant.ConstantValue;
+import constant.SqlQuery;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
@@ -48,96 +50,78 @@ public class MessageVerticle extends AbstractVerticle {
                     }
                 });
                 break;
-            case ConstantValue.AN:
-                articleNum(stationName).onComplete(rs -> {
-                   if (rs.succeeded()) {
-                       message.reply(rs.result());
-                   } else {
-                       String errorCode = rs.cause().getMessage();
-                       if ("400".equals(errorCode)) {
-                           message.fail(400, "Bad Request：" + rs.cause().getLocalizedMessage());
-                       } else if ("404".equals(errorCode)) {
-                           message.fail(404, "Not Found：" + rs.cause().getLocalizedMessage());
-                       } else {
-                           message.fail(500, "Internal Server Error：" + rs.cause().getLocalizedMessage());
-                       }
-                       System.out.println("錯誤回應");
-                   }
-                });
+            case ConstantValue.GAN:
+                getArticleNum(stationName).onComplete(rs -> codeResponse(message, rs));
                 break;
-            case ConstantValue.WN:
-                wordNum(stationName).onComplete(rs -> {
-                   if (rs.succeeded()) {
-                       message.reply(rs.result());
-                   } else {
-                       String errorCode = rs.cause().getMessage();
-                       if ("400".equals(errorCode)) {
-                           message.fail(400, "Bad Request：" + rs.cause().getLocalizedMessage());
-                       } else if ("404".equals(errorCode)) {
-                           message.fail(404, "Not Found：" + rs.cause().getLocalizedMessage());
-                       } else {
-                           message.fail(500, "Internal Server Error：" + rs.cause().getLocalizedMessage());
-                       }
-                       System.out.println("錯誤回應");
-                   }
-                });
-            case ConstantValue.AL:
-                articleList(stationName).onComplete(rs -> {
-                    if (rs.succeeded()) {
-                        message.reply(rs.result());
-                    } else {
-                        String errorCode = rs.cause().getMessage();
-                        if ("400".equals(errorCode)) {
-                            message.fail(400, "Bad Request：" + rs.cause().getLocalizedMessage());
-                        } else if ("404".equals(errorCode)) {
-                            message.fail(404, "Not Found：" + rs.cause().getLocalizedMessage());
-                        } else {
-                            message.fail(500, "Internal Server Error：" + rs.cause().getLocalizedMessage());
-                        }
-                        System.out.println("錯誤回應");
-                    }
-                });
-            case ConstantValue.TL:
+            case ConstantValue.GWN:
+                getWordNum(stationName).onComplete(rs -> codeResponse(message, rs));
+                break;
+            case ConstantValue.GAL:
+                getArticleList(stationName).onComplete(rs -> codeResponse(message, rs));
+                break;
+            case ConstantValue.GTL:
                 String keyword = request.getString("keyword");
-
-                titleList(stationName, keyword).onComplete(rs -> {
-                    if (rs.succeeded()) {
-                        message.reply(rs.result());
-                    } else {
-                        String errorCode = rs.cause().getMessage();
-                        if ("400".equals(errorCode)) {
-                            message.fail(400, "Bad Request：" + rs.cause().getLocalizedMessage());
-                        } else if ("404".equals(errorCode)) {
-                            message.fail(404, "Not Found：" + rs.cause().getLocalizedMessage());
-                        } else {
-                            message.fail(500, "Internal Server Error：" + rs.cause().getLocalizedMessage());
-                        }
-                        System.out.println("錯誤回應");
-                    }
-                });
+                getTitleList(stationName, keyword).onComplete(rs -> codeResponse(message, rs));
+                break;
             default:
                 message.fail(500, "Internal Server Error");
                 break;
         }
     }
 
-    // 返回新聞站台清單
-    private Future<JsonObject> getNewsList() {
+    //代碼回應
+    private void codeResponse(Message<JsonObject> message, AsyncResult<JsonObject> rs){
+        if (rs.succeeded()) {
+            message.reply(rs.result());
+        } else {
+            String errorCode = rs.cause().getMessage();
+            if ("400".equals(errorCode)) {
+                message.fail(400, "Bad Request：" + rs.cause().getLocalizedMessage());
+            } else if ("404".equals(errorCode)) {
+                message.fail(404, "Not Found：" + rs.cause().getLocalizedMessage());
+            } else {
+                message.fail(500, "Internal Server Error：" + rs.cause().getLocalizedMessage());
+            }
+            System.out.println("錯誤回應");
+        }
+    }
+
+    // code reuse: 查詢資料庫
+    private Future<JsonObject> executeQuery(String sql, JsonObject params, JsonObject item) {
         try {
-            String sql = "SHOW tables";
-            JsonArray articleList = new JsonArray();
+            JsonArray resultArray = new JsonArray();
+            JsonObject result = new JsonObject()
+                    .put("code", 200);
 
             // try-with-resources
-            try (Statement stmt = conn.createStatement();
-                 ResultSet rs = stmt.executeQuery(sql)) {
-                while (rs.next()) {
-                    articleList.add(rs.getString(1));
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                // 檢驗是否有變數需要參數化
+                if (!params.isEmpty()) {
+                    for (int i=1; i<=params.size(); i++) {
+                        pstmt.setObject(i, params.getString(String.valueOf(i)));
+                    }
+                }
+
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    // 檢驗"data"的內容是否有需要jsonObject格式
+                    if (item.isEmpty()) {
+                        if (rs.next()) {
+                            Object num = rs.getObject(1);
+                            result.put("data", num);
+                        }
+                    } else {
+                        while (rs.next()) {
+                            JsonObject rsObject = new JsonObject();
+                            for (int i=1; i<=item.size(); i++) {
+                                rsObject.put(item.getString(Integer.toString(i)), rs.getObject(i));
+                            }
+
+                            resultArray.add(rsObject);
+                        }
+                        result.put("data", resultArray);
+                    }
                 }
             }
-
-            JsonObject result = new JsonObject()
-                    .put("code", 200)
-                    .put("data", articleList);
 
             return Future.succeededFuture(result);
         } catch (SQLException e) {
@@ -145,115 +129,51 @@ public class MessageVerticle extends AbstractVerticle {
         }
     }
 
+    // 返回新聞站台清單
+    private Future<JsonObject> getNewsList() {
+        String sql = SqlQuery.SQL_GET_NEWS_LIST;
+        JsonObject nullObject = new JsonObject();
+        JsonObject stationObject = new JsonObject()
+                .put("1", "stationName");
+        return executeQuery(sql, nullObject, stationObject);
+    }
+
     //返回文章總數
-    private Future<JsonObject> articleNum(String stationName) {
-        try {
-            int num = 0;
-            String sql = "SELECT COUNT(*) FROM " + stationName;
-
-            // try-with-resources
-            try (Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery(sql)) {
-                if (rs.next()) {
-                    num = rs.getInt(1);
-                }
-            }
-
-            JsonObject result = new JsonObject()
-                    .put("code", 200)
-                    .put("data", num);
-
-            return Future.succeededFuture(result);
-        } catch (SQLException e) {
-            //return Future.failedFuture(String.valueOf(500));
-            return Future.failedFuture(String.valueOf(e.getErrorCode()));
-        }
+    private Future<JsonObject> getArticleNum(String stationName) {
+        String sql = SqlQuery.SQL_GET_ARTICLE_NUM(stationName);
+        JsonObject nullObject = new JsonObject();
+        return executeQuery(sql, nullObject, nullObject);
     }
 
     //返回所有文章字數總數
-    private Future<JsonObject> wordNum(String stationName) {
-        try {
-            int num = 0;
-            String sql = "SELECT SUM(CHAR_LENGTH(text)) AS num FROM " + stationName;
-
-            // try-with-resources
-            try (Statement stmt = conn.createStatement();
-                 ResultSet rs = stmt.executeQuery(sql)) {
-                if (rs.next()) {
-                    num = rs.getInt(1);
-                }
-            }
-
-            JsonObject result = new JsonObject()
-                    .put("code", 200)
-                    .put("data", num);
-
-            return Future.succeededFuture(result);
-        } catch (SQLException e) {
-            return Future.failedFuture(String.valueOf(e.getErrorCode()));
-        }
+    private Future<JsonObject> getWordNum(String stationName) {
+        String sql = SqlQuery.SQL_GET_WORD_NUM(stationName);
+        JsonObject nullObject = new JsonObject();
+        return executeQuery(sql, nullObject, nullObject);
     }
 
     //返回文章清單
-    private Future<JsonObject> articleList(String stationName) {
-            try {
-                String sql = "SELECT id, title, url, publish_date FROM " + stationName;
-                JsonArray articleList = new JsonArray();
-
-                // try-with-resources
-                try (Statement stmt = conn.createStatement();
-                     ResultSet rs = stmt.executeQuery(sql)) {
-                    while (rs.next()) {
-                        JsonObject article = new JsonObject()
-                                .put("id", rs.getInt("id"))
-                                .put("title", rs.getString("title"))
-                                .put("url", rs.getString("url"))
-                                .put("time", rs.getString("publish_date"));
-
-                        articleList.add(article);
-                    }
-                }
-
-                JsonObject result = new JsonObject()
-                        .put("code", 200)
-                        .put("data", articleList);
-
-                return Future.succeededFuture(result);
-            } catch (SQLException e) {
-                return Future.failedFuture(String.valueOf(e.getErrorCode()));
-            }
+    private Future<JsonObject> getArticleList(String stationName) {
+        String sql = SqlQuery.SQL_GET_ARTICLE_LIST(stationName);
+        JsonObject nullObject = new JsonObject();
+        JsonObject articleObject = new JsonObject()
+                .put("1", "id")
+                .put("2", "title")
+                .put("3", "url")
+                .put("4", "time");
+        return executeQuery(sql, nullObject, articleObject);
     }
 
     //返回標題清單
-    private Future<JsonObject> titleList(String stationName, String keyword) {
-        try {
-            String sql = "SELECT id, title, url FROM " + stationName + " WHERE title LIKE ?";
-            JsonArray titleList = new JsonArray();
-
-            // try-with-resources
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, "%" + keyword + "%");
-
-                try (ResultSet rs = pstmt.executeQuery()) {
-                    while (rs.next()) {
-                        JsonObject title = new JsonObject()
-                                .put("id", rs.getInt("id"))
-                                .put("title", rs.getString("title"))
-                                .put("url", rs.getString("url"));
-
-                        titleList.add(title);
-                    }
-                }
-            }
-
-            JsonObject result = new JsonObject()
-                    .put("code", 200)
-                    .put("data", titleList);
-
-            return Future.succeededFuture(result);
-        } catch (SQLException e) {
-            return Future.failedFuture(String.valueOf(e.getErrorCode()));
-        }
+    private Future<JsonObject> getTitleList(String stationName, String keyword) {
+        String sql = SqlQuery.SQL_GET_TITLE_LIST(stationName);
+        JsonObject paramsObject = new JsonObject()
+                .put("1", "%" + keyword + "%");
+        JsonObject titleObject = new JsonObject()
+                .put("1", "id")
+                .put("2", "title")
+                .put("3", "url");
+        return executeQuery(sql, paramsObject, titleObject);
     }
 
     public void stop() {

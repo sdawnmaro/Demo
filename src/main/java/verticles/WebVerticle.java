@@ -19,11 +19,11 @@ public class WebVerticle extends AbstractVerticle {
 
         // 設定路由和處理程序(handler)
         router.route().handler(BodyHandler.create());
-        router.get("/api/v1/news/info").handler(this::getNewList);
-        router.get("/api/v1/news/:name/article-num").handler(this::articleNum);
-        router.get("/api/v1/news/:name/word-num").handler(this::wordNum);
-        router.get("/api/v1/news/:name/article-list").handler(this::articleList);
-        router.get("/api/v1/news/:name/title-list").handler(this::titleList);
+        router.get("/api/v1/news/info").handler(this::newsListHandler);
+        router.get("/api/v1/news/:name/article-num").handler(this::articleNumHandler);
+        router.get("/api/v1/news/:name/word-num").handler(this::wordNumHandler);
+        router.get("/api/v1/news/:name/article-list").handler(this::articleListHandler);
+        router.get("/api/v1/news/:name/title-list").handler(this::titleListHandler);
 
         // 設定 HTTP 伺服器選項(SSL配置)
         HttpServerOptions httpServerOptions = new HttpServerOptions()
@@ -46,7 +46,7 @@ public class WebVerticle extends AbstractVerticle {
     }
 
     //新聞站台清單
-    private void getNewList(RoutingContext context) {
+    private void newsListHandler(RoutingContext context) {
             JsonObject request = new JsonObject()
                     .put("action", ConstantValue.GNL);
 
@@ -54,13 +54,13 @@ public class WebVerticle extends AbstractVerticle {
     }
 
     //文章總數
-    private void articleNum(RoutingContext context) {
+    private void articleNumHandler(RoutingContext context) {
         try {
             // 獲取 :name 參數值
             String stationName = context.pathParam("name");
 
             JsonObject request = new JsonObject()
-                    .put("action", ConstantValue.AN)
+                    .put("action", ConstantValue.GAN)
                     .put("name", stationName);
 
             forwardRequest(request, context);
@@ -72,13 +72,13 @@ public class WebVerticle extends AbstractVerticle {
     }
 
     //所有文章字數總數
-    private void wordNum(RoutingContext context) {
+    private void wordNumHandler(RoutingContext context) {
         try {
             // 獲取 :name 參數值
             String stationName = context.pathParam("name");
 
             JsonObject request = new JsonObject()
-                    .put("action", ConstantValue.WN)
+                    .put("action", ConstantValue.GWN)
                     .put("name", stationName);
 
             forwardRequest(request, context);
@@ -90,13 +90,13 @@ public class WebVerticle extends AbstractVerticle {
     }
 
     //文章清單
-    private void articleList(RoutingContext context) {
+    private void articleListHandler(RoutingContext context) {
         try {
             // 獲取 :name 參數值
             String stationName = context.pathParam("name");
 
             JsonObject request = new JsonObject()
-                    .put("action", ConstantValue.AL)
+                    .put("action", ConstantValue.GAL)
                     .put("name", stationName);
 
             forwardRequest(request, context);
@@ -108,7 +108,7 @@ public class WebVerticle extends AbstractVerticle {
     }
 
     //標題清單
-    private void titleList(RoutingContext context) {
+    private void titleListHandler(RoutingContext context) {
         try {
             // 獲取 :name 參數值
             String stationName = context.pathParam("name");
@@ -120,7 +120,7 @@ public class WebVerticle extends AbstractVerticle {
             }
 
             JsonObject request = new JsonObject()
-                    .put("action", ConstantValue.TL)
+                    .put("action", ConstantValue.GTL)
                     .put("name", stationName)
                     .put("keyword", keyword);
 
