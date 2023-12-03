@@ -48,7 +48,7 @@ public class WebVerticle extends AbstractVerticle {
     //新聞站台清單
     private void newsListHandler(RoutingContext context) {
             JsonObject request = new JsonObject()
-                    .put("action", ConstantValue.GNL);
+                    .put("action", ConstantValue.actionGetNewsList);
 
             forwardRequest(request, context);
     }
@@ -60,7 +60,7 @@ public class WebVerticle extends AbstractVerticle {
             String stationName = context.pathParam("name");
 
             JsonObject request = new JsonObject()
-                    .put("action", ConstantValue.GAN)
+                    .put("action", ConstantValue.actionGetArticleNum)
                     .put("name", stationName);
 
             forwardRequest(request, context);
@@ -78,7 +78,7 @@ public class WebVerticle extends AbstractVerticle {
             String stationName = context.pathParam("name");
 
             JsonObject request = new JsonObject()
-                    .put("action", ConstantValue.GWN)
+                    .put("action", ConstantValue.actionGetWordNum)
                     .put("name", stationName);
 
             forwardRequest(request, context);
@@ -96,7 +96,7 @@ public class WebVerticle extends AbstractVerticle {
             String stationName = context.pathParam("name");
 
             JsonObject request = new JsonObject()
-                    .put("action", ConstantValue.GAL)
+                    .put("action", ConstantValue.actionGetArticleList)
                     .put("name", stationName);
 
             forwardRequest(request, context);
@@ -120,7 +120,7 @@ public class WebVerticle extends AbstractVerticle {
             }
 
             JsonObject request = new JsonObject()
-                    .put("action", ConstantValue.GTL)
+                    .put("action", ConstantValue.actionGetTitleList)
                     .put("name", stationName)
                     .put("keyword", keyword);
 

@@ -41,7 +41,7 @@ public class MessageVerticle extends AbstractVerticle {
         String stationName = request.getString("name");
 
         switch (action) {
-            case ConstantValue.GNL:
+            case ConstantValue.actionGetNewsList:
                 getNewsList().onComplete(rs -> {
                     if (rs.succeeded()) {
                         message.reply(rs.result());
@@ -50,16 +50,16 @@ public class MessageVerticle extends AbstractVerticle {
                     }
                 });
                 break;
-            case ConstantValue.GAN:
+            case ConstantValue.actionGetArticleNum:
                 getArticleNum(stationName).onComplete(rs -> codeResponse(message, rs));
                 break;
-            case ConstantValue.GWN:
+            case ConstantValue.actionGetWordNum:
                 getWordNum(stationName).onComplete(rs -> codeResponse(message, rs));
                 break;
-            case ConstantValue.GAL:
+            case ConstantValue.actionGetArticleList:
                 getArticleList(stationName).onComplete(rs -> codeResponse(message, rs));
                 break;
-            case ConstantValue.GTL:
+            case ConstantValue.actionGetTitleList:
                 String keyword = request.getString("keyword");
                 getTitleList(stationName, keyword).onComplete(rs -> codeResponse(message, rs));
                 break;
@@ -87,18 +87,18 @@ public class MessageVerticle extends AbstractVerticle {
     }
 
     // code reuse: 查詢資料庫
-    private Future<JsonObject> executeQuery(String sql, JsonObject params, JsonObject item) {
+    private Future<JsonObject> executeQuery(String sql, JsonArray params, JsonArray item) {
         try {
             JsonArray resultArray = new JsonArray();
-            JsonObject result = new JsonObject()
-                    .put("code", 200);
+            JsonObject result = new JsonObject().put("code", 200);
 
             // try-with-resources
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 // 檢驗是否有變數需要參數化
                 if (!params.isEmpty()) {
-                    for (int i=1; i<=params.size(); i++) {
-                        pstmt.setObject(i, params.getString(String.valueOf(i)));
+                    // JsonArray 索引值從0開始
+                    for (int i=0; i<params.size(); i++) {
+                        pstmt.setObject(i+1, params.getValue(i));
                     }
                 }
 
@@ -112,8 +112,8 @@ public class MessageVerticle extends AbstractVerticle {
                     } else {
                         while (rs.next()) {
                             JsonObject rsObject = new JsonObject();
-                            for (int i=1; i<=item.size(); i++) {
-                                rsObject.put(item.getString(Integer.toString(i)), rs.getObject(i));
+                            for (int i=0; i<item.size(); i++) {
+                                rsObject.put(item.getString(i), rs.getObject(i+1));
                             }
 
                             resultArray.add(rsObject);
@@ -132,48 +132,57 @@ public class MessageVerticle extends AbstractVerticle {
     // 返回新聞站台清單
     private Future<JsonObject> getNewsList() {
         String sql = SqlQuery.SQL_GET_NEWS_LIST;
-        JsonObject nullObject = new JsonObject();
+        JsonArray nullParams = new JsonArray();
+        JsonArray stationArray = new JsonArray().add("stationName");
         JsonObject stationObject = new JsonObject()
                 .put("1", "stationName");
-        return executeQuery(sql, nullObject, stationObject);
+        return executeQuery(sql, nullParams, stationArray);
     }
 
     //返回文章總數
     private Future<JsonObject> getArticleNum(String stationName) {
         String sql = SqlQuery.SQL_GET_ARTICLE_NUM(stationName);
-        JsonObject nullObject = new JsonObject();
-        return executeQuery(sql, nullObject, nullObject);
+        JsonArray nullParams = new JsonArray();
+        return executeQuery(sql, nullParams, nullParams);
     }
 
     //返回所有文章字數總數
     private Future<JsonObject> getWordNum(String stationName) {
         String sql = SqlQuery.SQL_GET_WORD_NUM(stationName);
-        JsonObject nullObject = new JsonObject();
-        return executeQuery(sql, nullObject, nullObject);
+        JsonArray nullParams = new JsonArray();
+        return executeQuery(sql, nullParams, nullParams);
     }
 
     //返回文章清單
     private Future<JsonObject> getArticleList(String stationName) {
         String sql = SqlQuery.SQL_GET_ARTICLE_LIST(stationName);
-        JsonObject nullObject = new JsonObject();
+        JsonArray nullParams = new JsonArray();
+        JsonArray articleArray = new JsonArray()
+                .add("id")
+                .add("title")
+                .add("url")
+                .add("time");
         JsonObject articleObject = new JsonObject()
                 .put("1", "id")
                 .put("2", "title")
                 .put("3", "url")
                 .put("4", "time");
-        return executeQuery(sql, nullObject, articleObject);
+        return executeQuery(sql, nullParams, articleArray);
     }
 
     //返回標題清單
     private Future<JsonObject> getTitleList(String stationName, String keyword) {
         String sql = SqlQuery.SQL_GET_TITLE_LIST(stationName);
-        JsonObject paramsObject = new JsonObject()
-                .put("1", "%" + keyword + "%");
+        JsonArray paramsArray = new JsonArray().add("%" + keyword + "%");
+        JsonArray titleArray = new JsonArray()
+                .add("id")
+                .add("title")
+                .add("url");
         JsonObject titleObject = new JsonObject()
                 .put("1", "id")
                 .put("2", "title")
                 .put("3", "url");
-        return executeQuery(sql, paramsObject, titleObject);
+        return executeQuery(sql, paramsArray, titleArray);
     }
 
     public void stop() {
