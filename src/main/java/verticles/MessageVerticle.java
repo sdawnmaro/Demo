@@ -134,8 +134,6 @@ public class MessageVerticle extends AbstractVerticle {
         String sql = SqlQuery.SQL_GET_NEWS_LIST;
         JsonArray nullParams = new JsonArray();
         JsonArray stationArray = new JsonArray().add("stationName");
-        JsonObject stationObject = new JsonObject()
-                .put("1", "stationName");
         return executeQuery(sql, nullParams, stationArray);
     }
 
@@ -162,11 +160,6 @@ public class MessageVerticle extends AbstractVerticle {
                 .add("title")
                 .add("url")
                 .add("time");
-        JsonObject articleObject = new JsonObject()
-                .put("1", "id")
-                .put("2", "title")
-                .put("3", "url")
-                .put("4", "time");
         return executeQuery(sql, nullParams, articleArray);
     }
 
@@ -178,10 +171,6 @@ public class MessageVerticle extends AbstractVerticle {
                 .add("id")
                 .add("title")
                 .add("url");
-        JsonObject titleObject = new JsonObject()
-                .put("1", "id")
-                .put("2", "title")
-                .put("3", "url");
         return executeQuery(sql, paramsArray, titleArray);
     }
 
