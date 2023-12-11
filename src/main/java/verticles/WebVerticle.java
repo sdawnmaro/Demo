@@ -45,6 +45,21 @@ public class WebVerticle extends AbstractVerticle {
                 });
     }
 
+    // 捕獲錯誤回應
+    private void catchError(RoutingContext context, Exception e){
+        if (e instanceof IllegalArgumentException) {
+            System.out.println("無效的參數：" + e.getLocalizedMessage());
+            context.response()
+                    .setStatusCode(400)
+                    .end("無效的參數：" + e.getLocalizedMessage());
+        } else {
+            System.out.println(e.getLocalizedMessage());
+            context.response()
+                    .setStatusCode(500)
+                    .end("伺服器錯誤：" + e.getLocalizedMessage());
+        }
+    }
+
     //新聞站台清單
     private void newsListHandler(RoutingContext context) {
             JsonObject request = new JsonObject()
@@ -64,10 +79,8 @@ public class WebVerticle extends AbstractVerticle {
                     .put("name", stationName);
 
             forwardRequest(request, context);
-        } catch (IllegalArgumentException e) {
-            System.out.println("參數值錯誤：" + e.getLocalizedMessage());
         } catch (Exception e) {
-            System.out.println(e.getLocalizedMessage());
+            catchError(context, e);
         }
     }
 
@@ -82,10 +95,8 @@ public class WebVerticle extends AbstractVerticle {
                     .put("name", stationName);
 
             forwardRequest(request, context);
-        } catch (IllegalArgumentException e) {
-            System.out.println("參數值錯誤：" + e.getLocalizedMessage());
         } catch (Exception e) {
-            System.out.println(e.getLocalizedMessage());
+            catchError(context, e);
         }
     }
 
@@ -95,15 +106,29 @@ public class WebVerticle extends AbstractVerticle {
             // 獲取 :name 參數值
             String stationName = context.pathParam("name");
 
+            // 預設頁數為第一頁
+            int page = 1;
+            // 取得輸入值，從 URL 參數中獲取:https://localhost:8443/api/v1/news/:name/article-list?page=輸入值
+            String pageParam = context.request().getParam("page");
+
+            // 使用者未輸入參數值：page=1(預設值)
+            // 使用者有輸入有效參數值：將 page 設定為使用者輸入的值
+            if (pageParam != null && !pageParam.trim().isEmpty()) {
+                try {
+                    page = Integer.parseInt(pageParam);
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException();
+                }
+            }
+
             JsonObject request = new JsonObject()
                     .put("action", ConstantValue.actionGetArticleList)
-                    .put("name", stationName);
+                    .put("name", stationName)
+                    .put("page", page);
 
             forwardRequest(request, context);
-        } catch (IllegalArgumentException e) {
-            System.out.println("參數值錯誤：" + e.getLocalizedMessage());
         } catch (Exception e) {
-            System.out.println(e.getLocalizedMessage());
+            catchError(context, e);
         }
     }
 
@@ -112,10 +137,11 @@ public class WebVerticle extends AbstractVerticle {
         try {
             // 獲取 :name 參數值
             String stationName = context.pathParam("name");
+
             // 取得輸入值，從 URL 參數中獲取:https://localhost:8443/api/v1/news/:name/title-list?keyword=輸入值
             String keyword = context.request().getParam("keyword");
 
-            if (keyword == null) {
+            if (keyword == null || keyword.trim().isEmpty()) {
                 throw new IllegalArgumentException();
             }
 
@@ -125,10 +151,8 @@ public class WebVerticle extends AbstractVerticle {
                     .put("keyword", keyword);
 
             forwardRequest(request, context);
-        } catch (IllegalArgumentException e) {
-            System.out.println("參數值為空：" + e.getLocalizedMessage());
         } catch (Exception e) {
-            System.out.println(e.getLocalizedMessage());
+            catchError(context, e);
         }
     }
 

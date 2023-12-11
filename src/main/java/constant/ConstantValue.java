@@ -6,4 +6,5 @@ public class ConstantValue {
     public static final String actionGetWordNum = "getWordNum";
     public static final String actionGetArticleList = "getArticleList";
     public static final String actionGetTitleList = "getTitleList";
+    public static final int articleListPageSize = 20;
 }

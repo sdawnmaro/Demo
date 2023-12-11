@@ -8,8 +8,11 @@ public class SqlQuery {
     public static final String SQL_GET_WORD_NUM(String stationName) {
         return "SELECT SUM(CHAR_LENGTH(text)) AS num FROM " + stationName;
     }
-    public static final String SQL_GET_ARTICLE_LIST(String stationName) {
-        return "SELECT id, title, url, publish_date FROM " + stationName;
+    public static final String SQL_GET_ARTICLE_LIST(String stationName, int page) {
+        return "SELECT id, title, url, publish_date FROM " + stationName
+                + " ORDER BY publish_date DESC"
+                + " LIMIT " + ConstantValue.articleListPageSize
+                + " OFFSET " + ((page-1) * ConstantValue.articleListPageSize);
     }
     public static final String SQL_GET_TITLE_LIST(String stationName) {
         return "SELECT id, title, url FROM " + stationName + " WHERE title LIKE ?";

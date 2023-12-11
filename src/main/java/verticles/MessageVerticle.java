@@ -57,7 +57,8 @@ public class MessageVerticle extends AbstractVerticle {
                 getWordNum(stationName).onComplete(rs -> codeResponse(message, rs));
                 break;
             case ConstantValue.actionGetArticleList:
-                getArticleList(stationName).onComplete(rs -> codeResponse(message, rs));
+                int page = request.getInteger("page");
+                getArticleList(stationName , page).onComplete(rs -> codeResponse(message, rs));
                 break;
             case ConstantValue.actionGetTitleList:
                 String keyword = request.getString("keyword");
@@ -89,7 +90,9 @@ public class MessageVerticle extends AbstractVerticle {
     // code reuse: 查詢資料庫
     private Future<JsonObject> executeQuery(String sql, JsonArray params, JsonArray item) {
         try {
-            JsonArray resultArray = new JsonArray();
+            // SQL 查詢結果
+            JsonArray sqlResult = new JsonArray();
+            // 回應整體結果
             JsonObject result = new JsonObject().put("code", 200);
 
             // try-with-resources
@@ -116,9 +119,9 @@ public class MessageVerticle extends AbstractVerticle {
                                 rsObject.put(item.getString(i), rs.getObject(i+1));
                             }
 
-                            resultArray.add(rsObject);
+                            sqlResult.add(rsObject);
                         }
-                        result.put("data", resultArray);
+                        result.put("data", sqlResult);
                     }
                 }
             }
@@ -152,8 +155,8 @@ public class MessageVerticle extends AbstractVerticle {
     }
 
     //返回文章清單
-    private Future<JsonObject> getArticleList(String stationName) {
-        String sql = SqlQuery.SQL_GET_ARTICLE_LIST(stationName);
+    private Future<JsonObject> getArticleList(String stationName, int page) {
+        String sql = SqlQuery.SQL_GET_ARTICLE_LIST(stationName, page);
         JsonArray nullParams = new JsonArray();
         JsonArray articleArray = new JsonArray()
                 .add("id")
